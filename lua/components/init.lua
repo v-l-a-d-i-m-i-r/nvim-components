@@ -32,6 +32,12 @@ local function Component(options)
       vim.cmd(table.concat(command_table, ' && '))
     end,
 
+    init = function()
+      if options.on_init then
+        options.on_init()
+      end
+    end,
+
     bin = function(binary_name)
       if binary_name == nil or binary_name == '' then
         return binaries_directory
@@ -54,11 +60,13 @@ local function Component(options)
   }
 end
 
-local setup = function(p)
+local M = {}
+
+M.setup = function(p)
   params = p
 end
 
-local install_components = function()
+M.install_components = function()
   for _, component_name in ipairs(components_names_list) do
     local component = components[component_name]
     local is_component_installed = component.check_installed()
@@ -73,11 +81,11 @@ local install_components = function()
   end
 end
 
-local get_component = function(name)
+M.get_component = function(name)
   return components[name]
 end
 
-local add_component = function(options)
+M.add_component = function(options)
   local component = Component(options)
   local component_name = component.get_name()
   local is_component_installed = component.check_installed()
@@ -89,11 +97,35 @@ local add_component = function(options)
 
   table.insert(components_names_list, component_name)
   components[component_name] = component
+
+  component.init()
 end
 
-return {
-  setup = setup,
-  install_components = install_components,
-  add_component = add_component,
-  get_component = get_component,
-}
+M.load_plugin = function(name)
+  local path = M.get_component(name).bin('')
+  local rtp = path:sub(1, string.len(path) - 1)
+  local after = rtp .. '/after'
+  local doc_dir = rtp .. '/doc'
+  local tags_file = doc_dir .. '/tags'
+
+  vim.opt.rtp:append(rtp)
+
+  local after_stat = vim.loop.fs_stat(after)
+  if after_stat and after_stat.type == 'directory' then
+    vim.opt.rtp:append(after)
+  end
+
+  local doc_dir_stat = vim.loop.fs_stat(doc_dir)
+  if not (doc_dir_stat and doc_dir_stat.type == 'directory') then
+    return
+  end
+
+  local tags_file_stat = vim.loop.fs_stat(tags_file)
+  if tags_file_stat and tags_file_stat.type == 'file' then
+    return
+  end
+
+  vim.cmd("silent! execute 'helptags' '" .. doc_dir .. "/'")
+end
+
+return M
