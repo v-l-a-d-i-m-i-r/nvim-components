@@ -1,12 +1,37 @@
 local md5 = require('md5')
 
+---@class Params
+---@field components_path string
+--@field lazy_install boolean
+
+---@type Params
 local params = {
   components_path = 'not specified',
   lazy_install = false,
 }
+
+---@type string[]
 local components_names_list = {}
+
+---@type { [string]: Component }
 local components = {}
 
+---@class ComponentOptions
+---@field name string
+---@field install_script fun(): string
+---@field binaries_directory? string
+---@field on_init? fun()
+
+---@class Component
+---@field get_name fun(): string
+---@field install fun()
+---@field init fun()
+---@field bin fun(binary_name: string): string
+---@field clear fun()
+---@field check_installed fun(): boolean
+
+---@param options ComponentOptions
+---@return Component
 local function Component(options)
   local name = options.name
   local install_script_string = options.install_script()
@@ -62,12 +87,14 @@ end
 
 local M = {}
 
+---@param p Params
 M.setup = function(p)
   params = p
 end
 
 M.install_components = function()
   for _, component_name in ipairs(components_names_list) do
+    ---@type Component
     local component = components[component_name]
     local is_component_installed = component.check_installed()
 
@@ -81,11 +108,15 @@ M.install_components = function()
   end
 end
 
+---@param name string
+--@return Component
 M.get_component = function(name)
   return components[name]
 end
 
+---@param options ComponentOptions
 M.add_component = function(options)
+  ---@type Component
   local component = Component(options)
   local component_name = component.get_name()
   local is_component_installed = component.check_installed()
@@ -101,6 +132,7 @@ M.add_component = function(options)
   component.init()
 end
 
+---@param name string
 M.load_plugin = function(name)
   local path = M.get_component(name).bin('')
   local rtp = path:sub(1, string.len(path) - 1)
