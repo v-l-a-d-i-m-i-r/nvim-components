@@ -1,13 +1,14 @@
 # nvim-components
 
-A modular Lua-based component manager for Neovim. This project provides a mechanism to define, install, and manage components or plugins based on custom scripts, with support for lazy installation and dependency isolation.
+A modular Lua-based component manager for Neovim. This project provides a mechanism to define, install, and manage components or plugins based on custom scripts, with support for dependency isolation and automated cleanup.
 
 ## Features
 
 - **Component-based architecture**: Define individual components with installation logic.
-- **Lazy installation**: Optionally install components only when required.
 - **Binary path management**: Access installed binaries from structured paths.
 - **Customizable setup**: Configure the component system with a user-defined root path.
+- **Component cleanup**: Remove stale component directories that are no longer registered.
+- **Sync**: Install missing components and clean up unused ones in a single call.
 - **Reusable utilities**: Includes helper functions to chain CLI commands using `|` or `&&`.
 
 ## Usage
@@ -35,7 +36,9 @@ A modular Lua-based component manager for Neovim. This project provides a mechan
 
     components.setup({
       components_path = components_path,
-      lazy_install = true,
+      -- Directory name of this plugin inside components_path (used by clean_up_components
+      -- to preserve it when removing stale directories).
+      self_name = 'components-nvim-' .. components_plugin_commit,
     })
    ```
 
@@ -53,9 +56,19 @@ A modular Lua-based component manager for Neovim. This project provides a mechan
    })
    ```
 
-3. **Install all components (or just set `lazy_install` to `true` in plugin setup)**:
+3. **Install all components**:
    ```vim
    :ComponentsInstall
+   ```
+
+4. **Clean up stale component directories** (removes directories under `components_path` that are not associated with any registered component, preserving the plugin's own directory):
+   ```vim
+   :ComponentsCleanUp
+   ```
+
+5. **Sync** (install missing + remove stale in one call):
+   ```vim
+   :ComponentsSync
    ```
 
 
@@ -97,9 +110,9 @@ print(sequential_command)
 -- Output: echo 'Starting build' && make && make install
 ```
 
-### `clone_git_repo(params: { url: string, commit?: string, tag?: string }): string`
+### `clone_git_repo(params: { url: string, commit?: string, tag?: string }): string?`
 
-Generates a Git command string to clone a repository, optionally checking out a specific commit or tag.
+Generates a Git command string to clone a repository, optionally checking out a specific commit or tag. Returns `nil` when neither `commit` nor `tag` is provided and the clone command cannot be constructed.
 
 ```lua
 local utils = require('components.utils')

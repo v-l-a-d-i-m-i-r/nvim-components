@@ -3,24 +3,22 @@ local M = {}
 ---@class Utils
 ---@field cli_pipe fun(commands_table: string[]): string
 ---@field cli_and fun(commands_table: string[]): string
---@field clone_git_repo fun(params: {url: string, commit?: string, tag?: string}): string
-
-M = {}
+---@field clone_git_repo fun(params: {url: string, commit?: string, tag?: string}): string?
 
 ---@param commands_table string[]
---@return string
+---@return string
 M.cli_pipe = function(commands_table)
   return table.concat(commands_table, ' | ')
 end
 
 ---@param commands_table string[]
---@return string
+---@return string
 M.cli_and = function(commands_table)
   return table.concat(commands_table, ' && ')
 end
 
 ---@param params {url: string, commit?: string, tag?: string}
---@return string
+---@return string?
 M.clone_git_repo = function(params)
   local url = params.url
   local commit = params.commit

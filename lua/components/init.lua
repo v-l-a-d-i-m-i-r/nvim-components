@@ -2,11 +2,12 @@ local md5 = require('md5')
 
 ---@class Params
 ---@field components_path string
---@field lazy_install boolean
+---@field self_name string
 
 ---@type Params
 local params = {
   components_path = 'not specified',
+  self_name = 'no specified',
   lazy_install = false,
 }
 
@@ -26,7 +27,7 @@ local components = {}
 ---@field get_name fun(): string
 ---@field install fun()
 ---@field init fun()
----@field bin fun(binary_name: string): string
+---@field bin fun(binary_name: string?): string
 ---@field clear fun()
 ---@field check_installed fun(): boolean
 
@@ -101,15 +102,52 @@ M.install_components = function()
     if not is_component_installed then
       print('Installing ' .. component_name)
       component.clear()
-      component.install()
-    else
-      print(component_name .. ' already installed')
+      local ok, err = pcall(component.install)
+      if not ok or vim.v.shell_error ~= 0 then
+        error('Failed to install ' .. component_name .. (err and (': ' .. err) or ''))
+      end
+    end
+
+    component.init()
+  end
+end
+
+M.clean_up_components = function()
+  local valid_dirs = { [params.self_name] = true }
+
+  for _, component_name in ipairs(components_names_list) do
+    local full_path = components[component_name].bin('')
+    -- Extract the immediate subdirectory name under components_path (format: name-hash)
+    local rel = full_path:sub(#params.components_path + 2)
+    local dir_name = rel:match('^([^/]+)')
+    if dir_name then
+      valid_dirs[dir_name] = true
+    end
+  end
+
+  local handle = vim.loop.fs_scandir(params.components_path)
+  if not handle then
+    return
+  end
+
+  while true do
+    local name, type = vim.loop.fs_scandir_next(handle)
+    if not name then
+      break
+    end
+    if type == 'directory' and not valid_dirs[name] then
+      vim.cmd('! rm -rf ' .. params.components_path .. '/' .. name)
     end
   end
 end
 
+M.sync_components = function()
+  M.install_components()
+  M.clean_up_components()
+end
+
 ---@param name string
---@return Component
+---@return Component?
 M.get_component = function(name)
   return components[name]
 end
@@ -119,17 +157,9 @@ M.add_component = function(options)
   ---@type Component
   local component = Component(options)
   local component_name = component.get_name()
-  local is_component_installed = component.check_installed()
-
-  if params.lazy_install and not is_component_installed then
-    component.clear()
-    component.install()
-  end
 
   table.insert(components_names_list, component_name)
   components[component_name] = component
-
-  component.init()
 end
 
 ---@param name string
