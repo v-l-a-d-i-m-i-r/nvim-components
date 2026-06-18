@@ -9,7 +9,7 @@ A modular Lua-based component manager for Neovim. This project provides a mechan
 - **Customizable setup**: Configure the component system with a user-defined root path.
 - **Component cleanup**: Remove stale component directories that are no longer registered.
 - **Sync**: Install missing components and clean up unused ones in a single call.
-- **Reusable utilities**: Includes helper functions to chain CLI commands using `|` or `&&`.
+- **Reusable utilities**: Includes helper functions to chain CLI commands using `|` or `&&`, and dedicated helpers to clone a Git repo at a specific commit or tag.
 
 ## Usage
 
@@ -133,6 +133,38 @@ local clone_tag_cmd = utils.clone_git_repo({
 })
 
 print(clone_tag_cmd)
+-- Output: git clone --depth 1 --branch v1.0.0 https://github.com/example/project.git .
+```
+
+### `clone_git_repo_at_commit(params: { url: string, commit: string }): string`
+
+Generates a Git command string to clone a repository and check out a specific commit. Both `url` and `commit` are required. Prefer this over `clone_git_repo` when a commit is always expected, as the return type is `string` (never `nil`).
+
+```lua
+local utils = require('components.utils')
+
+local cmd = utils.clone_git_repo_at_commit({
+  url = "https://github.com/example/project.git",
+  commit = "abc123def"
+})
+
+print(cmd)
+-- Output: git clone https://github.com/example/project.git . && git reset --hard abc123def
+```
+
+### `clone_git_repo_at_tag(params: { url: string, tag: string }): string`
+
+Generates a Git command string to shallow-clone a repository at a specific tag. Both `url` and `tag` are required. Prefer this over `clone_git_repo` when a tag is always expected, as the return type is `string` (never `nil`).
+
+```lua
+local utils = require('components.utils')
+
+local cmd = utils.clone_git_repo_at_tag({
+  url = "https://github.com/example/project.git",
+  tag = "v1.0.0"
+})
+
+print(cmd)
 -- Output: git clone --depth 1 --branch v1.0.0 https://github.com/example/project.git .
 ```
 
